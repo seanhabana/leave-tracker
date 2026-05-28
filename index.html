@@ -62,6 +62,7 @@
   .t-academic  { background: #dcfce7; color: #166534; }
   .t-emergency { background: #fef3c7; color: #92400e; }
   .t-others    { background: #f3e8ff; color: #6b21a8; }
+  .t-birthday  { background: #fce7f3; color: #9d174d; }
 
   /* ── Detail panel ── */
   .panel { margin-top: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-md); animation: slideIn .2s ease; }
@@ -144,6 +145,7 @@
     <div class="legend-item"><div class="legend-dot" style="background:#dcfce7"></div>Academic</div>
     <div class="legend-item"><div class="legend-dot" style="background:#fef3c7"></div>Emergency</div>
     <div class="legend-item"><div class="legend-dot" style="background:#f3e8ff"></div>Others</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#fce7f3"></div>Birthday Leave</div>
   </div>
 
   <div class="month-tabs">
@@ -232,10 +234,13 @@ const SHEET_EDIT_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR7JrApD
 const MONTHS = [{y:2026,m:4,label:'May 2026'},{y:2026,m:5,label:'June 2026'}];
 const LEAVE_TYPES = {
   'Sick Leave':    {cls:'t-sick',     short:'SL', av:'#fee2e2', avtxt:'#991b1b'},
+  'Birthday Leave':{cls:'t-vacation', short:'BD', av:'#fce7f3', avtxt:'#9d174d'},
   'Vacation Leave':{cls:'t-vacation', short:'VL', av:'#dbeafe', avtxt:'#1e40af'},
   'Academic':      {cls:'t-academic', short:'AC', av:'#dcfce7', avtxt:'#166534'},
+  'Academic Leave':{cls:'t-academic', short:'AC', av:'#dcfce7', avtxt:'#166534'},
   'Emergency':     {cls:'t-emergency',short:'EM', av:'#fef3c7', avtxt:'#92400e'},
   'Others':        {cls:'t-others',   short:'OT', av:'#f3e8ff', avtxt:'#6b21a8'},
+  'Birthday Leave':{cls:'t-birthday',  short:'BD', av:'#fce7f3', avtxt:'#9d174d'},
 };
 
 let leaves = [];
@@ -253,7 +258,7 @@ async function loadData(){
     loadDemo(); return;
   }
   try{
-    const r = await fetch(SHEET_URL);
+    const r = await fetch(SHEET_URL + '&cachebust=' + Date.now(), {cache: 'no-store'});
     const csv = await r.text();
     leaves = parseCSV(csv);
     renderAll();
@@ -277,26 +282,27 @@ function parseCSV(csv){
       if(s.includes('-')) return s.slice(0,10);
       const [m,d,y] = s.split('/'); return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
     };
-    return { name, from: normDate(from), to: normDate(to), type: type||'Others', reason: reason||'', status: status||'Approved' };
+    return { name, from: normDate(from), to: normDate(to), type: normalizeType(type), reason: reason||'', status: status||'Approved' };
   }).filter(Boolean);
 }
 
-function loadDemo(){
-  leaves = [
-    {name:'Sean Habana',   from:'2026-05-28',to:'2026-05-29',type:'Academic',      reason:'Graduation picture shoot',  status:'Approved'},
-    {name:'Lea Domingo',   from:'2026-05-28',to:'2026-05-28',type:'Sick Leave',     reason:'Migraine',                  status:'Approved'},
-    {name:'Maria Santos',  from:'2026-05-29',to:'2026-05-29',type:'Sick Leave',     reason:'Fever / doctor visit',      status:'Approved'},
-    {name:'Rico Tan',      from:'2026-05-29',to:'2026-05-30',type:'Vacation Leave', reason:'Long weekend trip',         status:'Approved'},
-    {name:'Jose Reyes',    from:'2026-06-02',to:'2026-06-04',type:'Vacation Leave', reason:'Family trip',               status:'Approved'},
-    {name:'Ana Cruz',      from:'2026-06-05',to:'2026-06-05',type:'Emergency',      reason:'Family emergency',          status:'Approved'},
-    {name:'Bea Navarro',   from:'2026-06-09',to:'2026-06-09',type:'Others',         reason:'Personal errands',          status:'Approved'},
-    {name:'Carlo Bautista',from:'2026-06-10',to:'2026-06-11',type:'Sick Leave',     reason:'Medical procedure',         status:'Approved'},
-  ];
+function loadDemo(){// fallback only
+  leaves = [];
   renderAll();
   document.getElementById('subtitle').textContent = 'Demo data · showing sample leaves';
 }
 
 // ── Render ─────────────────────────────────────────────────────────────────
+function normalizeType(t){
+  if(!t) return 'Others';
+  const tl = t.toLowerCase().trim();
+  if(tl.includes('sick')) return 'Sick Leave';
+  if(tl.includes('vacation')) return 'Vacation Leave';
+  if(tl.includes('academic')) return 'Academic';
+  if(tl.includes('emergency')) return 'Emergency';
+  if(tl.includes('birthday')) return 'Birthday Leave';
+  return t;
+}
 function leavesFor(dt){ return leaves.filter(l=> dk(dt)>=l.from && dk(dt)<=l.to); }
 function initials(n){ return n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
 
@@ -423,7 +429,7 @@ function submitLeave(){
 // ── Init ───────────────────────────────────────────────────────────────────
 loadData();
 // Auto-refresh every 5 minutes
-setInterval(loadData, 5 * 60 * 1000);
+setInterval(loadData, 1 * 60 * 1000);
 </script>
 </body>
 </html>
